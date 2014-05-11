@@ -200,7 +200,7 @@ void myDisplay() {
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
-  glPointSize(3.0f);
+  glPointSize(5.0f);
 
   glBegin(GL_LINES);
   for(int i=-10;i<=10;i++) {
@@ -211,6 +211,11 @@ void myDisplay() {
     // glVertex3f(-10,0,i);
     // glVertex3f(10,0,i);
   };
+  glEnd();
+
+  glBegin(GL_POINTS);
+  glColor3f(.9,.1,.1);
+  glVertex3f(goal[0], goal[1], goal[2]);
   glEnd();
 
   fabrik.setGoal(goal[0], goal[1], goal[2]);
