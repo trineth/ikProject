@@ -16,7 +16,7 @@ public:
 	void setGoal(Point x);
 	void setGoal(float x, float y, float z);
 	Point* getJoints();
-	void compute(bool norm);
+	void compute();
 	void shrinkEnd();
 };
 

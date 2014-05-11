@@ -4,8 +4,11 @@
 #include <fstream>
 #include <cmath>
 #include "point.h"
-#include "link.h"
 #include "fabrik.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/type_ptr.hpp"    // for glm::mat4_cast // casting quaternion->mat4
+#include "glm/gtx/quaternion.hpp"  // for glm::rotation
+#include "glm/gtx/string_cast.hpp" // for glm::to_string
 
 #ifdef _WIN32
 #include <windows.h>
@@ -42,7 +45,6 @@ float angle = 0;
 float rotx = 168;
 float roty = 180;
 float width = 1;
-int linkNum = 0;
 int jointNum = 0;
 float tolerance = 0.01;
 float goal[3];
@@ -64,7 +66,6 @@ class Viewport {
 // Global Variables
 //****************************************************
 Viewport    viewport;
-Link links[4];
 Fabrik fabrik(tolerance);
 
 //****************************************************
@@ -106,83 +107,35 @@ void generateLinks() {
   goal[2] = 10;
   fabrik.setJoints(p0,p1,p2,p3,p4);
 
-  Link link0(p0,p1);
-  Link link1(p1,p2);
-  Link link2(p2,p3);
-  Link link3(p3,p4);
-
-  links[0] = link0;
-  links[1] = link1;
-  links[2] = link2;
-  links[3] = link3;
-
-  linkNum = 4;
   jointNum = 5;
 }
 
-void renderVertex(Point points[], int i) {
-    float* values = points[i].getValues();
-    // float* normal = points[i].getNormal(posX,posY,posZ);
-    // glNormal3f(normal[0], normal[1], normal[2]);
-    glVertex3f(values[0], values[1], values[2]);
-}
-
-// points must have at least 4 elements
-void drawRectangle(Point points[]) {
-  glBegin(GL_TRIANGLES);
-  renderVertex(points, 0);
-  renderVertex(points, 2);
-  renderVertex(points, 1);
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  renderVertex(points, 0);
-  renderVertex(points, 3);
-  renderVertex(points, 2);
-  glEnd();
-}
-
-void drawTriangle(Point points[]) {
-  glBegin(GL_TRIANGLES);
-  renderVertex(points, 0);
-  renderVertex(points, 2);
-  renderVertex(points, 1);
-  glEnd();
-}
-
-// Draws an arbitrary rectangle using the two link endpoints
-// code adapted from stack overflow:
-// http://stackoverflow.com/questions/7854043/drawing-rectangle-between-two-points-with-arbitrary-width
+//Code adapted from http://stackoverflow.com/questions/21654501/opengl-glut-draw-pyramid-skeleton-bones
 void drawLink(Point point1, Point point2) {
-  //Calculate a vector between start and end points
-  Point vector(point2 - point1);
-
-  //Then calculate a perpendicular to it (just swap X and Y coordinates)
-  //P.X = V.Y; //Use separate variable otherwise you overwrite X coordinate here
-  //P.Y = -V.X; //Flip the sign of either the X or Y (edit by adam.wulf)
-  Point perp(vector.getY(), -vector.getX(), vector.getZ());
-
-  //Normalize that perpendicular
-  float length = sqrt(perp.getX() * perp.getX() + perp.getY() * perp.getY()); //Thats length of perpendicular
-  // N.X = P.X / Length;
-  // N.Y = P.Y / Length; //Now N is normalized perpendicular
-  Point n(perp.getX()/length, perp.getY()/length, perp.getZ());
-
-  //Calculate 4 points that form a rectangle by adding normalized perpendicular and multiplying it by half of the desired width
-  // R1.X = Point1.X + N.X * Width / 2;
-  // R1.Y = Point1.Y + N.Y * Width / 2;
-  // R2.X = Point1.X - N.X * Width / 2;
-  // R2.Y = Point1.Y - N.Y * Width / 2;
-  // R3.X = Point2.X + N.X * Width / 2;
-  // R3.Y = Point2.Y + N.Y * Width / 2;
-  // R4.X = Point2.X - N.X * Width / 2;
-  // R4.Y = Point2.Y - N.Y * Width / 2;
-  Point r1(point1 + n*width/2);
-  Point r2(point1 - n*width/2);
-  Point r3(point2 - n*width/2);
-  Point r4(point2 + n*width/2);
-  Point points[4] = {r1, r2, r3, r4};
-  drawRectangle(points);
+  Eigen::Vector3d _startBoneVec3(point1.getX(), point1.getY(), point1.getZ());
+  Eigen::Vector3d _endddBoneVec3(point2.getX(), point2.getY(), point2.getZ());
+  // for JOINTS
+  //
+  glPushMatrix();
+      glTranslated( _startBoneVec3(0),_startBoneVec3(1),_startBoneVec3(2) );
+      glutWireSphere(0.2,30,30);
+  glPopMatrix();
+  //
+  // for BONES
+  //
+  glPushMatrix();
+      float boneLength = ( _endddBoneVec3  - _startBoneVec3 ).norm();
+      glTranslated(        _startBoneVec3(0),_startBoneVec3(1),_startBoneVec3(2) );
+      glm::vec3 _glmStart( _startBoneVec3(0),_startBoneVec3(1),_startBoneVec3(2) );
+      glm::vec3 _glmEnddd( _endddBoneVec3(0),_endddBoneVec3(1),_endddBoneVec3(2) );
+      glm::vec3 _glmDirrr   = glm::normalize( _glmEnddd - _glmStart ); // super important to normalize!!!
+      glm::quat _glmRotQuat = glm::rotation( glm::vec3(0,0,1),_glmDirrr); // calculates rotation quaternion between 2 normalized vectors
+    //glm::mat4 _glmRotMat = glm::mat4_cast(_glmRotQuat); // quaternion -> mat4
+      glm::mat4 _glmRotMat = glm::toMat4   (_glmRotQuat); // quaternion -> mat4
+    //std::cout <<  glm::to_string(_glmDirrr) << std::endl;
+      glMultMatrixf(glm::value_ptr(_glmRotMat));
+      glutWireCone(0.5,boneLength,4,20); // cone with 4 slices = pyramid-like
+  glPopMatrix();
 }
 
 void printCamera() {
@@ -199,7 +152,6 @@ void initScene(int argc, char *argv[]) {
   glClearColor(0.2f, 0.2f, 0.2f, 0.0f); // Clear to black, fully transparent
 
   myReshape(viewport.w,viewport.h);
-  //parser.parse(argc, argv);
 
   generateLinks();
 }
@@ -234,36 +186,24 @@ void myDisplay() {
 
   GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
   GLfloat mat_shininess[] = { 50.0 };
-  GLfloat lightpos[] = {10, 10, 10, 0.};
+  GLfloat lightpos0[] = {10, 10, 10, 0.};
   glClearColor (0.0, 0.0, 0.0, 0.0);
   glShadeModel (GL_SMOOTH);
 
   glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
   glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-  glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
+  glLightfv(GL_LIGHT0, GL_POSITION, lightpos0);
+
+  GLfloat lmodel_ambient[] = { 0.9, 0.9, 0.9, 1.0 };
+  glLightModelfv(GL_LIGHT_MODEL_AMBIENT, lmodel_ambient);
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glPointSize(3.0f);
 
-  // //Rendering just the points
-  // glPointSize(6.0f);
-  // glBegin(GL_LINES);
-  // Point* points;
-  // float* values;
-  // for (int i = 0; i < patchNum; i++) {
-  //   Patch patch = patches[i];
-  //   points = patch.getPoints();
-  //   for (int j = 0; j < 16; j++) {
-  //     values = points[j].getValues();
-  //     glVertex3f(values[0], values[1], values[2]);
-  //   }
-
-  // }
-  // glEnd();
   fabrik.setGoal(goal[0], goal[1], goal[2]);
-  fabrik.compute(normalize);
+  fabrik.compute();
 
   Point* joints = fabrik.getJoints();
   for (int i = 0; i < jointNum-1; i++) {
@@ -346,30 +286,34 @@ void processSpecialKeys(int key, int x, int y) {
   switch(key) {
     case GLUT_KEY_UP :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[1] += 0.1f;
-      } else {
+        goal[2] += 0.1f;
+      } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx += 1.0f;
+      } else {
+        goal[1] += 0.1f;
       }
       break;
     case GLUT_KEY_DOWN :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[1] -= 0.1f;
-      } else {
+        goal[2] -= 0.1f;
+      } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx -= 1.0f;
+      } else {
+        goal[1] -= 0.1f;
       }
       break;
     case GLUT_KEY_LEFT :
-      if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[0] -= 0.1f;
-      } else {
+      if (mod == GLUT_ACTIVE_CTRL) {
         roty -= 1.0f;
+      } else {
+        goal[0] -= 0.1f;
       }
       break;
     case GLUT_KEY_RIGHT :
-      if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[0] += 0.1f;
-      } else {
+      if (mod == GLUT_ACTIVE_CTRL) {
         roty += 1.0f;
+      } else {
+        goal[0] += 0.1f;
       }
       break;
 

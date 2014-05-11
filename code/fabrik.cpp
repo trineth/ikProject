@@ -47,12 +47,14 @@
 		return joints;
 	}
 
+	// Fixes the out-of-reach problem.  Forces the last link to maintain its length,
+	// going as close as possible toward the goal.
 	void Fabrik::shrinkEnd() {
 		float dCalc = (joints[4] - joints[3]).getDistance();
 		float dExact = d[3];
 
-		if (abs(dCalc - dExact) > 0.01) {
-			Point vector = joints[4] - joints[3];
+		if (dCalc - dExact > 0.00001 || dCalc - dExact < -0.00001) {
+			Point vector = goal - joints[3];
 			vector.normalize();
 			double factor = dExact / vector.getDistance();
 			joints[4] = joints[3] + (vector * factor);
@@ -60,8 +62,8 @@
 		}
 	}
 
-	// Uses the FABRIK algorithm to compute IK
-	void Fabrik::compute(bool norm) {
+	// Uses the FABRIK algorithm to compute IK.
+	void Fabrik::compute() {
 		int n = 4; //number of joints
 		Point p0 = joints[0];
 		Point p1 = joints[1];
@@ -109,7 +111,5 @@
 			}
 		}
 
-		if (norm) {
-			shrinkEnd();
-		}
+		shrinkEnd();
 	}

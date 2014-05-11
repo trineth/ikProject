@@ -11,17 +11,14 @@ endif
 	
 RM = /bin/rm -f 
 all: main
-main: code/main.o code/link.o code/point.o code/fabrik.o
-	$(CC) $(CFLAGS) -o main code/point.o code/link.o code/fabrik.o code/main.o $(LDFLAGS)
+main: code/main.o code/point.o code/fabrik.o
+	$(CC) $(CFLAGS) -o main code/point.o code/fabrik.o code/main.o $(LDFLAGS)
 
-code/main.o: code/main.cpp code/link.cpp code/point.cpp
+code/main.o: code/main.cpp code/fabrik.cpp code/point.cpp
 	$(CC) $(CFLAGS) -c code/main.cpp -o code/main.o
 
 code/fabrik.o: code/fabrik.cpp code/point.cpp
 	$(CC) $(CFLAGS) -c code/fabrik.cpp -o code/fabrik.o
-
-code/link.o: code/link.cpp code/point.cpp
-	$(CC) $(CFLAGS) -c code/link.cpp -o code/link.o
 
 code/point.o: code/point.cpp
 	$(CC) $(CFLAGS) -c code/point.cpp -o code/point.o
