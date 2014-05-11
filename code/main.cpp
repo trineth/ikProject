@@ -202,6 +202,17 @@ void myDisplay() {
   glEnable(GL_LIGHT0);
   glPointSize(3.0f);
 
+  glBegin(GL_LINES);
+  for(int i=-10;i<=10;i++) {
+    if (i==-10) { glColor3f(.6,.3,.3); } else { glColor3f(.25,.25,.25); };
+    glVertex3f(i,0,-20);
+    glVertex3f(i,0,20);
+    // if (i==-10) { glColor3f(.3,.3,.6); } else { glColor3f(.25,.25,.25); };
+    // glVertex3f(-10,0,i);
+    // glVertex3f(10,0,i);
+  };
+  glEnd();
+
   fabrik.setGoal(goal[0], goal[1], goal[2]);
   fabrik.compute();
 
@@ -286,7 +297,7 @@ void processSpecialKeys(int key, int x, int y) {
   switch(key) {
     case GLUT_KEY_UP :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[2] += 0.1f;
+        goal[2] -= 0.1f;
       } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx += 1.0f;
       } else {
@@ -295,7 +306,7 @@ void processSpecialKeys(int key, int x, int y) {
       break;
     case GLUT_KEY_DOWN :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[2] -= 0.1f;
+        goal[2] += 0.1f;
       } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx -= 1.0f;
       } else {
