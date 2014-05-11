@@ -5,6 +5,7 @@
 #include <cmath>
 #include "point.h"
 #include "link.h"
+#include "fabrik.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -30,17 +31,23 @@ static struct timeval lastTime;
 #endif
 
 #define PI 3.14159265
-float posX = 0.0f;
-float posY = 0.0f;
+float posX = 2.0f;
+float posY = 2.0f;
 float posZ = 0.0f;
-float tX = 80.0f;
-float tY = -384.0f;
-float tZ = -2.0f;
-float fov = -23.5f;
-float angle = 90;
-float rotx = 239;
-float roty = -153.00f;
-float width = 2;
+float tX = 0.0f;
+float tY = 0.0f;
+float tZ = 0.0f;
+float fov = -40.0f;
+float angle = 0;
+float rotx = 168;
+float roty = 180;
+float width = 1;
+int linkNum = 0;
+int jointNum = 0;
+float tolerance = 0.01;
+float goal[3];
+bool normalize = false;
+std::vector<float> endPosition[3];
 
 using namespace std;
 
@@ -56,7 +63,9 @@ class Viewport {
 //****************************************************
 // Global Variables
 //****************************************************
-Link[4] links;
+Viewport    viewport;
+Link links[4];
+Fabrik fabrik(tolerance);
 
 //****************************************************
 // reshape viewport if the window is resized
@@ -85,10 +94,30 @@ void myReshape(int w, int h) {
 // helper methods
 //****************************************************
 void generateLinks() {
-  link[0] = Point(0, 0, 10);
-  link[1] = Point(0, 10, 10);
-  link[2] = Point(5, 10, 10);
-  link[3] = Point(5, 6, 10);
+  Point p0(0, 0, 10);
+  Point p1(0, 10, 10);
+  Point p2(5, 10, 10);
+  Point p3(7, 8, 10);
+  Point p4(7, 6, 10);
+
+  fabrik.setGoal(p4);
+  goal[0] = 7;
+  goal[1] = 6;
+  goal[2] = 10;
+  fabrik.setJoints(p0,p1,p2,p3,p4);
+
+  Link link0(p0,p1);
+  Link link1(p1,p2);
+  Link link2(p2,p3);
+  Link link3(p3,p4);
+
+  links[0] = link0;
+  links[1] = link1;
+  links[2] = link2;
+  links[3] = link3;
+
+  linkNum = 4;
+  jointNum = 5;
 }
 
 void renderVertex(Point points[], int i) {
@@ -113,13 +142,18 @@ void drawRectangle(Point points[]) {
   glEnd();
 }
 
+void drawTriangle(Point points[]) {
+  glBegin(GL_TRIANGLES);
+  renderVertex(points, 0);
+  renderVertex(points, 2);
+  renderVertex(points, 1);
+  glEnd();
+}
+
 // Draws an arbitrary rectangle using the two link endpoints
 // code adapted from stack overflow:
 // http://stackoverflow.com/questions/7854043/drawing-rectangle-between-two-points-with-arbitrary-width
-void drawLink(Link link) {
-  Point point1 = link.getTail();
-  Point point2 = link.getHead();
-
+void drawLink(Point point1, Point point2) {
   //Calculate a vector between start and end points
   Point vector(point2 - point1);
 
@@ -145,9 +179,9 @@ void drawLink(Link link) {
   // R4.Y = Point2.Y - N.Y * Width / 2;
   Point r1(point1 + n*width/2);
   Point r2(point1 - n*width/2);
-  Point r3(point2 + n*width/2);
-  Point r4(point2 - n*width/2);
-  Points[4] points = {r1, r2, r3, r4};
+  Point r3(point2 - n*width/2);
+  Point r4(point2 + n*width/2);
+  Point points[4] = {r1, r2, r3, r4};
   drawRectangle(points);
 }
 
@@ -162,7 +196,7 @@ void printCamera() {
 // sets the window up
 //****************************************************
 void initScene(int argc, char *argv[]) {
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
+  glClearColor(0.2f, 0.2f, 0.2f, 0.0f); // Clear to black, fully transparent
 
   myReshape(viewport.w,viewport.h);
   //parser.parse(argc, argv);
@@ -176,8 +210,7 @@ void initScene(int argc, char *argv[]) {
 //***************************************************
 void myDisplay() {
 
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_CULL_FACE);
+  //glEnable(GL_CULL_FACE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
@@ -195,14 +228,23 @@ void myDisplay() {
   glTranslatef(posX,posY,1);
   glRotatef(rotx,1,0,0);
   glRotatef(roty,0,1,0);  
-  glColor3f(0.2f, 0.9f, 0.7f);
+  glColor3f(0.9f, 0.9f, 0.9f);
 
   // Enable lighting
-  glEnable(GL_LIGHTING);
-  glEnable(GL_LIGHT0);
+
+  GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+  GLfloat mat_shininess[] = { 50.0 };
   GLfloat lightpos[] = {10, 10, 10, 0.};
+  glClearColor (0.0, 0.0, 0.0, 0.0);
+  glShadeModel (GL_SMOOTH);
+
+  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+  glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
   glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
 
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
   glPointSize(3.0f);
 
   // //Rendering just the points
@@ -220,14 +262,25 @@ void myDisplay() {
 
   // }
   // glEnd();
+  fabrik.setGoal(goal[0], goal[1], goal[2]);
+  fabrik.compute(normalize);
 
-  for (int i = 0; i < 4; i++) {
-    drawLink(links[i]);
+  Point* joints = fabrik.getJoints();
+  for (int i = 0; i < jointNum-1; i++) {
+    drawLink(joints[i], joints[i+1]);
+    // glBegin(GL_LINES);
+    // // Point t = links[i].getTail();
+    // // Point h = links[i].getHead();
+    // Point t = joints[i];
+    // Point h = joints[i+1];
+    // glVertex3f(t.getX(), t.getY(), t.getZ());
+    // glVertex3f(h.getX(), h.getY(), h.getZ());
+    // glEnd();
   }
 
   glFlush();
   glutSwapBuffers();
-  printCamera();
+  //printCamera();
 }
 //****************************************************
 // called by glut when there are no messages to handle
@@ -240,6 +293,41 @@ void myFrameMove() {
   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
 }
 
+void updateGoal(int x, int y) {
+    GLint viewport2[4];
+    GLdouble modelview[16];
+    GLdouble projection[16];
+    GLfloat winX, winY, winZ;
+    GLdouble posX, posY, posZ;
+ 
+    glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
+    glGetDoublev( GL_PROJECTION_MATRIX, projection );
+    glGetIntegerv( GL_VIEWPORT, viewport2 );
+ 
+    winX = (float)x;
+    winY = (float)viewport2[3] - (float)y;
+    glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
+ 
+    gluUnProject( winX, winY, winZ, modelview, projection, viewport2, &posX, &posY, &posZ);
+ 
+    goal[0] = posX;
+    goal[1] = posY;
+
+    std::cout << posX << " " << posY << " " << posZ << "\n";
+}
+
+void mouseClicks(int button, int state, int x, int y) {
+    if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        updateGoal(x, y);
+    }
+  }
+
+void myPressedMove(int x,int y)
+{
+  updateGoal(x, y);
+}
+
+
 void processKeys(unsigned char key, int x, int y) {
   switch(key) {
     case 43: // +
@@ -248,6 +336,8 @@ void processKeys(unsigned char key, int x, int y) {
       fov -= 0.5f; break;
     case 61: // =
       fov += 0.5f; break;
+    case 110: // n
+      normalize = !normalize;
   }
 }
 
@@ -256,28 +346,28 @@ void processSpecialKeys(int key, int x, int y) {
   switch(key) {
     case GLUT_KEY_UP :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        posY -= 0.5f;
+        goal[1] += 0.1f;
       } else {
         rotx += 1.0f;
       }
       break;
     case GLUT_KEY_DOWN :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        posY += 0.5f;
+        goal[1] -= 0.1f;
       } else {
         rotx -= 1.0f;
       }
       break;
     case GLUT_KEY_LEFT :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        posX += 0.5f;
+        goal[0] -= 0.1f;
       } else {
         roty -= 1.0f;
       }
       break;
     case GLUT_KEY_RIGHT :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        posX -= 0.5f;
+        goal[0] += 0.1f;
       } else {
         roty += 1.0f;
       }
@@ -324,7 +414,9 @@ int main(int argc, char *argv[]) {
   glutReshapeFunc(myReshape);                  // function to run when the window gets resized
   glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
   glutKeyboardFunc(processKeys);
-  glutSpecialFunc(processSpecialKeys);         
+  glutSpecialFunc(processSpecialKeys);
+  //glutMouseFunc(mouseClicks);
+  //glutMotionFunc(myPressedMove);        
   glutMainLoop();                              // infinite loop that will keep drawing and resizing and whatever else
 
   return 0;

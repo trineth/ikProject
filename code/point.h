@@ -3,7 +3,7 @@
 #include "Eigen/Dense"
 
 class Point {
-	Eigen::Vector3f values[3];
+	float values[3];
 public:
 	Point() {}
 	Point(float xx, float yy, float zz);
@@ -12,13 +12,17 @@ public:
 	Point( const Point& other );
 
 	float* getValues();
-	float Point::getX();
-	float Point::getY();
-	float Point::getZ();
+	float getX();
+	float getY();
+	float getZ();
+
+	float getDistance();
+	void normalize();
 
 	Point& operator+=(const Point& rhs);
 	Point& operator-=(const Point& rhs);
 	Point& operator=(const Point& rhs);
+	bool operator == (const Point &rhs) const;
 
  	friend Point operator+(Point lhs, const Point& rhs);
  	friend Point operator-(Point lhs, const Point& rhs);

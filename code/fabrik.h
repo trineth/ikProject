@@ -1,0 +1,23 @@
+#ifndef FABRIK_H
+#define FABRIK_H
+
+class Point;
+
+class Fabrik {
+	Point goal;
+	Point joints[5];
+	float d[4];
+	float tol;
+public:
+	Fabrik() {}
+	Fabrik(float tolerance);
+
+	void setJoints(Point one, Point two, Point three, Point four, Point five);
+	void setGoal(Point x);
+	void setGoal(float x, float y, float z);
+	Point* getJoints();
+	void compute(bool norm);
+	void shrinkEnd();
+};
+
+#endif
