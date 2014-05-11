@@ -96,7 +96,7 @@ void myReshape(int w, int h) {
 //****************************************************
 void generateLinks() {
   Point p0(0, 0, 10);
-  Point p1(0, 10, 10);
+  Point p1(0, 5, 10);
   Point p2(5, 10, 10);
   Point p3(7, 8, 10);
   Point p4(7, 6, 10);
