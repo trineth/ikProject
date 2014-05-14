@@ -37,20 +37,17 @@ static struct timeval lastTime;
 float posX = 2.0f;
 float posY = 2.0f;
 float posZ = 0.0f;
-float tX = 0.0f;
-float tY = 0.0f;
-float tZ = 0.0f;
 float fov = -40.0f;
-float angle = 0;
 float rotx = 168;
 float roty = 180;
-float width = 1;
+
 int jointNum = 0;
 float tolerance = 0.01;
+float moveStep = 0.2;
+float epsilon = moveStep * 10;
 float goal[3];
-bool normalize = false;
+float mouse[3];
 std::vector<float> endPosition[3];
-
 using namespace std;
 
 //****************************************************
@@ -66,7 +63,7 @@ class Viewport {
 // Global Variables
 //****************************************************
 Viewport    viewport;
-Fabrik fabrik(tolerance);
+Fabrik fabrik(tolerance, epsilon);
 
 //****************************************************
 // reshape viewport if the window is resized
@@ -140,9 +137,7 @@ void drawLink(Point point1, Point point2) {
 
 void printCamera() {
   std::cout << "Pos X, Y, Z:" << posX << " " << posY << " " << posZ << "\n";
-  std::cout << "tX, tY, tZ:" << tX << " " << tY << " " << tZ << "\n";
-  std::cout << "fov, angle:" << fov << " " << angle << " " << "\n";
-  std::cout << "rotx, roty:" << rotx << " " << roty << "\n\n";
+  std::cout << "fov, rotx, roty:" << fov << " " << rotx << " " << roty << "\n\n";
 }
 
 //****************************************************
@@ -174,8 +169,6 @@ void myDisplay() {
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  //gluLookAt(tX, tY, tZ, 0, 0, 0, 0, 1, 0);
-  // glRotatef(angle, 0, 1, 0);
   glTranslatef(0,0,fov);
   glTranslatef(posX,posY,1);
   glRotatef(rotx,1,0,0);
@@ -224,19 +217,10 @@ void myDisplay() {
   Point* joints = fabrik.getJoints();
   for (int i = 0; i < jointNum-1; i++) {
     drawLink(joints[i], joints[i+1]);
-    // glBegin(GL_LINES);
-    // // Point t = links[i].getTail();
-    // // Point h = links[i].getHead();
-    // Point t = joints[i];
-    // Point h = joints[i+1];
-    // glVertex3f(t.getX(), t.getY(), t.getZ());
-    // glVertex3f(h.getX(), h.getY(), h.getZ());
-    // glEnd();
   }
 
   glFlush();
   glutSwapBuffers();
-  //printCamera();
 }
 //****************************************************
 // called by glut when there are no messages to handle
@@ -249,38 +233,61 @@ void myFrameMove() {
   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
 }
 
-void updateGoal(int x, int y) {
-    GLint viewport2[4];
-    GLdouble modelview[16];
-    GLdouble projection[16];
-    GLfloat winX, winY, winZ;
-    GLdouble posX, posY, posZ;
+//Maps mouse movement to goal position changes.
+//Moving the mouse on the x and y axis changes the goal accordingly.
+//If the Shift button is held, then moving the mouse in the y-axis
+//will instead move the goal in the z-axis
+void updateGoal(int x, int y, bool hold, bool shift) {
+    // GLint viewport2[4];
+    // GLdouble modelview[16];
+    // GLdouble projection[16];
+    // GLfloat winX, winY, winZ;
+    // GLdouble posX, posY, posZ;
  
-    glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
-    glGetDoublev( GL_PROJECTION_MATRIX, projection );
-    glGetIntegerv( GL_VIEWPORT, viewport2 );
+    // glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
+    // glGetDoublev( GL_PROJECTION_MATRIX, projection );
+    // glGetIntegerv( GL_VIEWPORT, viewport2 );
  
-    winX = (float)x;
-    winY = (float)viewport2[3] - (float)y;
-    glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
+    // winX = (float)x;
+    // winY = (float)viewport2[3] - (float)y;
+    // glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
  
-    gluUnProject( winX, winY, winZ, modelview, projection, viewport2, &posX, &posY, &posZ);
+    // gluUnProject( winX, winY, winZ, modelview, projection, viewport2, &posX, &posY, &posZ);
  
-    goal[0] = posX;
-    goal[1] = posY;
+    // goal[0] = posX;
+    // goal[1] = posY;
 
-    std::cout << posX << " " << posY << " " << posZ << "\n";
+    // std::cout << posX << " " << posY << " " << posZ << "\n";
+
+    float scale = 0.03; 
+    if (hold) {
+      if (shift) {
+        goal[2] += (y - mouse[1])*scale;
+      } else {
+        goal[1] += -(y - mouse[1])*scale;
+      }
+      goal[0] += (x - mouse[0])*scale;
+    }
+    mouse[0] = x;
+    mouse[1] = y;
 }
 
 void mouseClicks(int button, int state, int x, int y) {
-    if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        updateGoal(x, y);
-    }
+  int mod = glutGetModifiers();
+  if (mod == GLUT_ACTIVE_SHIFT) {
+    updateGoal(x, y, false, true);
+  } else {
+    updateGoal(x, y, false, false);
   }
+}
 
-void myPressedMove(int x,int y)
-{
-  updateGoal(x, y);
+void myPressedMove(int x,int y) {
+  int mod = glutGetModifiers();
+  if (mod == GLUT_ACTIVE_SHIFT) {
+    updateGoal(x, y, true, true);
+  } else {
+    updateGoal(x, y, true, false);
+  }
 }
 
 
@@ -292,8 +299,14 @@ void processKeys(unsigned char key, int x, int y) {
       fov -= 0.5f; break;
     case 61: // =
       fov += 0.5f; break;
-    case 110: // n
-      normalize = !normalize;
+    case 119: // w
+      posY +=  0.5f; break;
+    case 97: //a
+      posX -= 0.5f; break;
+    case 115: //s
+      posY -= 0.5f; break;
+    case 100: //d
+      posX += 0.5f; break;
   }
 }
 
@@ -302,49 +315,36 @@ void processSpecialKeys(int key, int x, int y) {
   switch(key) {
     case GLUT_KEY_UP :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[2] -= 0.1f;
+        goal[2] -= moveStep;
       } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx += 1.0f;
       } else {
-        goal[1] += 0.1f;
+        goal[1] += moveStep;
       }
       break;
     case GLUT_KEY_DOWN :
       if (mod == GLUT_ACTIVE_SHIFT) {
-        goal[2] += 0.1f;
+        goal[2] += moveStep;
       } else if (mod == GLUT_ACTIVE_CTRL) {
         rotx -= 1.0f;
       } else {
-        goal[1] -= 0.1f;
+        goal[1] -= moveStep;
       }
       break;
     case GLUT_KEY_LEFT :
       if (mod == GLUT_ACTIVE_CTRL) {
         roty -= 1.0f;
       } else {
-        goal[0] -= 0.1f;
+        goal[0] -= moveStep;
       }
       break;
     case GLUT_KEY_RIGHT :
       if (mod == GLUT_ACTIVE_CTRL) {
         roty += 1.0f;
       } else {
-        goal[0] += 0.1f;
+        goal[0] += moveStep;
       }
       break;
-
-    case GLUT_KEY_PAGE_UP :
-      tZ += 1.0f; break;
-    case GLUT_KEY_PAGE_DOWN :
-      tZ -= 1.0f; break;
-    case GLUT_KEY_F11 :
-      fov += 1.0f; break;
-    case GLUT_KEY_F12 :
-      fov -= 1.0f; break;
-    case GLUT_KEY_F1 :
-      angle += 1.0f; break;
-    case GLUT_KEY_F2 :
-      angle -= 1.0f; break;
   }
 }
 
@@ -375,8 +375,8 @@ int main(int argc, char *argv[]) {
   glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
   glutKeyboardFunc(processKeys);
   glutSpecialFunc(processSpecialKeys);
-  //glutMouseFunc(mouseClicks);
-  //glutMotionFunc(myPressedMove);        
+  glutMouseFunc(mouseClicks);
+  glutMotionFunc(myPressedMove);        
   glutMainLoop();                              // infinite loop that will keep drawing and resizing and whatever else
 
   return 0;

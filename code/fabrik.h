@@ -8,9 +8,10 @@ class Fabrik {
 	Point joints[5];
 	float d[4];
 	float tol;
+	float epsilon;
 public:
 	Fabrik() {}
-	Fabrik(float tolerance);
+	Fabrik(float tolerance, float eps);
 
 	void setJoints(Point one, Point two, Point three, Point four, Point five);
 	void setGoal(Point x);

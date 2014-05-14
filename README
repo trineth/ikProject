@@ -1,0 +1,22 @@
+Assignment 4:  Inverse Kinematics
+
+Name:  Steven Wu
+SID: 22930668
+Platform:  Linux
+
+===================================
+===================================
+
+Usage Instructions:
+Compile the code by typing "make" in the command line on the root folder.
+
+Run the program using "./main".
+
+Controls:
+Move the goal endpoint in the x-y axis with the Arrow Keys.
+Move the goal endpoint along the z axis holding "Shift" and pressing Up or Down on the Arrow Keys.
+Rotate the camera by holding "Ctrl" and using the Arrow Keys.
+Zoom in or out using "-" or "+".
+
+===================================
+===================================

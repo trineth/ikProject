@@ -13,8 +13,9 @@
 // float d[4];
 // float tol;
 // public:
-	Fabrik::Fabrik(float tolerance) {
+	Fabrik::Fabrik(float tolerance, float eps) {
 		tol = tolerance;
+		epsilon = eps; //Error for out of bounds correction
 	}
 
 	void Fabrik::setGoal(Point x) {
@@ -53,7 +54,7 @@
 		float dCalc = (joints[4] - joints[3]).getDistance();
 		float dExact = d[3];
 
-		if (dCalc - dExact > 0.00001 || dCalc - dExact < -0.00001) {
+		if (dCalc - dExact > 0.0001 || dCalc - dExact < -0.0001) {
 			Point vector = goal - joints[3];
 			vector.normalize();
 			double factor = dExact / vector.getDistance();
@@ -76,11 +77,11 @@
 		float d1 = (p2 - p1).getDistance();
 		float d2 = (p3 - p2).getDistance();
 		float d3 = (p4 - p3).getDistance();
-		std::cout << d0 << " " << d1 << " " << d2 << " " << d3 << "\n";
+		//std::cout << d0 << " " << d1 << " " << d2 << " " << d3 << "\n";
 
 		float dist = (p0 - goal).getDistance();
 
-		if (dist > d[0] + d[1] + d[2] + d[3]) { //Target unreachable
+		if ((dist - epsilon) > d[0] + d[1] + d[2] + d[3]) { //Target unreachable
 			float r, lambda;
 			for (int i = 0; i < n-1; i++) {
 				r = (goal - joints[i]).getDistance();
