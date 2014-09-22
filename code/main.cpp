@@ -1,4 +1,3 @@
-// CS184 Simple OpenGL Example
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -349,7 +348,7 @@ void processSpecialKeys(int key, int x, int y) {
 }
 
 //****************************************************
-// the usual stuff, nothing exciting here
+// main
 //****************************************************
 int main(int argc, char *argv[]) {
   //This initializes glut
